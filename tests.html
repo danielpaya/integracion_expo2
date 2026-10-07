@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pruebas del motor de cálculo</title>
+<style>
+  :root { --bg:#0F1623; --panel:#172133; --ink:#E9EEF6; --muted:#9FB0C8; --ok:#35C08A; --bad:#F06A6A; --line:#2A3850; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 "Segoe UI", system-ui, sans-serif; padding:24px; }
+  h1 { margin:0 0 4px; font-size:26px; }
+  .sum { font-size:22px; font-weight:700; margin:12px 0 20px; padding:12px 16px; border-radius:8px; display:inline-block; }
+  .sum.ok { background:rgba(53,192,138,.15); color:var(--ok); } .sum.bad { background:rgba(240,106,106,.15); color:var(--bad); }
+  h2 { font-size:18px; margin:24px 0 8px; color:var(--muted); }
+  table { border-collapse:collapse; width:100%; max-width:1100px; background:var(--panel); border-radius:8px; overflow:hidden; }
+  th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  th { color:var(--muted); font-weight:600; }
+  .ok { color:var(--ok); font-weight:700; } .bad { color:var(--bad); font-weight:700; }
+  p { color:var(--muted); }
+</style>
+</head>
+<body>
+<h1>Pruebas del motor de cálculo (calc.js + data.js)</h1>
+<p>Tolerancia ±0,01. Escenarios de C3 (totales), C4 (matriz) y C6 (simulador), más verificaciones adicionales contra el informe.</p>
+<div id="sum" class="sum"></div>
+<div id="out"></div>
+<script src="data.js"></script>
+<script src="calc.js"></script>
+<script>
+(function () {
+  var D = window.RA_DATA, K = window.RACalc, V = D.verificacion, groups = [];
+  var TOL = 0.01 + 1e-9;
+  function group(name) { var g = { name: name, rows: [] }; groups.push(g); return g; }
+  function num(g, label, got, exp) { g.rows.push({ label: label, got: K.fmt(got), exp: K.fmt(exp), ok: Math.abs(got - exp) <= TOL }); }
+  function eq(g, label, got, exp) { g.rows.push({ label: label, got: String(got), exp: String(exp), ok: String(got) === String(exp) }); }
+  var SCN = { original: {}, corregidas: { corregidas: true }, corregidasNormSec: { corregidas: true, normSec: true } };
+  var NOM = { original: "Original", corregidas: "Corregidas", corregidasNormSec: "Corregidas + seguridad normalizada" };
+
+  Object.keys(SCN).forEach(function (s) {
+    var g = group("C3 · Totales — " + NOM[s]), c = K.costs(D, SCN[s]);
+    K.PROVS.forEach(function (p) { num(g, p.toUpperCase(), c[p].total, V.totales[s][p]); });
+  });
+  Object.keys(SCN).forEach(function (s) {
+    var g = group("C4 · Matriz ponderada — " + NOM[s]), m = K.matrixScores(D, K.costs(D, SCN[s]));
+    K.PROVS.forEach(function (p) { num(g, p.toUpperCase(), m.scores[p], V.matriz[s][p]); });
+    eq(g, "Ganador", K.winner(m.scores), "gcp");
+  });
+  V.simulador.forEach(function (t) {
+    var g = group("C6 · Simulador — " + t.nombre + " (Original)"), c = K.costs(D, t.params);
+    K.PROVS.forEach(function (p) { num(g, p.toUpperCase(), c[p].total, t.esperado[p]); });
+    if (t.ganador) eq(g, "Más barato (alerta de cambio de ganador)", K.cheapest(c), t.ganador);
+  });
+
+  var g = group("Informe · Componentes de la tabla 4 reproducidos por las fórmulas");
+  var c0 = K.costs(D, {});
+  K.PROVS.forEach(function (p) { K.COMPS.forEach(function (k) { num(g, p.toUpperCase() + " · " + k, c0[p][k], D.costosOriginal[p][k]); }); });
+  g = group("Informe · Tabla 5 (escenarios adicionales)");
+  V.tabla5Extra.forEach(function (t) { var c = K.costs(D, t.params); K.PROVS.forEach(function (p) { num(g, t.nombre + " · " + p.toUpperCase(), c[p].total, t.esperado[p]); }); });
+  g = group("Informe · Conversiones, 36 meses, Clase 9 y desglose");
+  K.PROVS.forEach(function (p) {
+    num(g, p.toUpperCase() + " · COP millones/mes", K.r2(K.toCOP(c0[p].total, D.meta.trm) / 1e6), D.totalesCOPMInforme[p]);
+    g.rows.push({ label: p.toUpperCase() + " · USD a 36 meses (redondeado)", got: K.fmt(K.months(c0[p].total, 36), 0), exp: K.fmt(D.totales36Informe[p], 0), ok: Math.round(K.months(c0[p].total, 36)) === D.totales36Informe[p] });
+    var sumL = D.lineas[p].reduce(function (s, l) { return s + l.usd; }, 0);
+    num(g, p.toUpperCase() + " · Suma del Anexo A", sumL, D.totalesInforme[p]);
+  });
+  var sub = { aws: 258.52, azure: 243.04, gcp: 222.80, oci: 417.22 };
+  K.PROVS.forEach(function (p) { num(g, p.toUpperCase() + " · Subconjunto Clase 9 (almac. + consulta)", K.clase9Subset(c0[p]), sub[p]); });
+  var e4 = D.correcciones["E-04"].emr;
+  num(g, "E-04 · EMR Serverless 1.200 vCPU-h + 4.800 GB-h", 1200 * e4.precioVcpuH + 4800 * e4.precioGBh, 90.89);
+  num(g, "E-01 · 40 h × 0,2185", 40 * 0.2185, 8.74);
+  num(g, "Diferencia GCP–Azure a 60 meses (US$)", (c0.azure.total - c0.gcp.total) * 60, D.financiero.difGcpAzure60mInforme);
+  eq(g, "Ranking Original", K.ranking(c0).join(" < "), "gcp < oci < aws < azure");
+  eq(g, "Ranking Corregidas", K.ranking(K.costs(D, { corregidas: true })).join(" < "), "gcp < aws < oci < azure");
+  var w = K.normalizeWeights({ a: 1, b: 3 }); num(g, "Normalización de pesos suma 100", w.a + w.b, 100);
+
+  var total = 0, ok = 0, html = "";
+  groups.forEach(function (gr) {
+    html += "<h2>" + gr.name + "</h2><table><tr><th>Prueba</th><th>Obtenido</th><th>Esperado</th><th>Resultado</th></tr>";
+    gr.rows.forEach(function (r) {
+      total++; if (r.ok) ok++;
+      html += "<tr><td>" + r.label + "</td><td>" + r.got + "</td><td>" + r.exp + "</td><td class='" + (r.ok ? "ok'>APROBADO" : "bad'>FALLIDO") + "</td></tr>";
+    });
+    html += "</table>";
+  });
+  document.getElementById("out").innerHTML = html;
+  var s = document.getElementById("sum");
+  s.className = "sum " + (ok === total ? "ok" : "bad");
+  s.textContent = (ok === total ? "APROBADO" : "FALLIDO") + " — " + ok + " de " + total + " pruebas";
+  window.TEST_SUMMARY = { total: total, ok: ok, fallidas: groups.reduce(function (a, gr) { return a.concat(gr.rows.filter(function (r) { return !r.ok; }).map(function (r) { return gr.name + " · " + r.label + ": " + r.got + " ≠ " + r.exp; })); }, []) };
+})();
+</script>
+</body>
+</html>

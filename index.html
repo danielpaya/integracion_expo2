@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RetailAndes · Data Lake</title>
+<meta name="description" content="Presentación-dashboard interactiva: Data Lake con Gobierno de Datos para RetailAndes S.A.S. sobre Google Cloud.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header id="hdr">
+    <div class="brand">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M3 16.5h18M3 7.5h18" /></svg>
+      <span>RetailAndes <small>· DataStrategos</small></span>
+    </div>
+    <div class="seg" role="group" aria-label="Cifras">
+      <span>Cifras:</span>
+      <div class="opts">
+        <button type="button" data-setc="0" title="Reproduce exactamente el informe (C)">Original del informe</button>
+        <button type="button" data-setc="1" class="corr" title="Aplica E-01 y E-04 de la auditoría (C)">Corregidas por auditoría</button>
+      </div>
+    </div>
+    <label class="hchk" title="E-03: quita la detección de amenazas de AWS y Azure"><input type="checkbox" data-global="normSec"> Normalizar seguridad</label>
+    <div class="grow"></div>
+    <span class="pos" id="pos"></span>
+    <button type="button" class="hbtn" data-act="mode" title="Modo dashboard (D)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg><span class="lbl" id="modeLbl">Dashboard</span> <kbd>D</kbd></button>
+    <button type="button" class="hbtn" data-act="notes" title="Notas del orador (N)"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM9 11h7M9 15h7"/></svg><span class="lbl">Notas</span> <kbd>N</kbd></button>
+    <button type="button" class="hbtn" data-act="team" title="Ocultar/mostrar notas internas del equipo (H)"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 100-6 3 3 0 000 6z"/></svg><span class="lbl">Notas equipo</span> <kbd>H</kbd></button>
+    <button type="button" class="hbtn" data-act="fs" title="Pantalla completa (F)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><kbd>F</kbd></button>
+    <button type="button" class="hbtn" data-act="help" title="Atajos de teclado (?)">?</button>
+  </header>
+
+  <main id="stage-wrap"><div id="stage" aria-live="polite"></div></main>
+  <aside id="notes" aria-label="Notas del orador"></aside>
+  <section id="dash" aria-label="Modo dashboard"></section>
+  <div id="progress"></div>
+  <div id="tip" role="tooltip"></div>
+
+  <div id="help" role="dialog" aria-label="Atajos de teclado">
+    <div class="box">
+      <h3 style="margin-top:0">Atajos de teclado</h3>
+      <table>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>Espacio</kbd> · clic</td><td>Navegar (revela paso a paso)</td></tr>
+        <tr><td><kbd>Inicio</kbd> / <kbd>Fin</kbd></td><td>Primera / última diapositiva</td></tr>
+        <tr><td><kbd>F</kbd></td><td>Pantalla completa</td></tr>
+        <tr><td><kbd>D</kbd></td><td>Modo exposición ⇄ dashboard</td></tr>
+        <tr><td><kbd>N</kbd></td><td>Notas del orador</td></tr>
+        <tr><td><kbd>C</kbd></td><td>Cifras: Original ⇄ Corregidas</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Normalizar seguridad (E-03)</td></tr>
+        <tr><td><kbd>H</kbd></td><td>Ocultar notas internas del equipo</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Cerrar esta ayuda</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="calc.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
